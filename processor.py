@@ -134,6 +134,6 @@ for n_mc, n_kirb in maps:
         plt.ylabel('N(merged max)')
     cnt += 1
     plt.ylim(0.1, 100)
-plt.gcf().set_size_inches(7, 7)
+plt.gcf().set_size_inches(10, 7)
 plt.tight_layout()
 plt.savefig('dwarf_dwarf.pdf')
