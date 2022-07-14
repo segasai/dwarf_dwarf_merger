@@ -85,21 +85,20 @@ def trier(fehs, mv_parent, min_mv=-14, max_mv=0, nbins=40):
         G = scipy.stats.gamma(nobs + 1, scale=1. / expn_sat)
         n_16, n_84 = G.ppf(.16), G.ppf(.84)
         # print(propexpn, nobs, n1, en1)
-        # n1 = nobs*1./(propexpn)
-        # en1 = np.sqrt(nobs)/(propexpn)
         nums1[i] = n_16
         nums2[i] = n_84
     return mv_sat_grid, nums1, nums2
 
 
 if __name__ == '__main__':
-    tab = atpy.Table().read('vizier_votable.vot')
+    tab = atpy.Table().read('kirby2010.vot')
     # https://ui.adsabs.harvard.edu/?#abs/2010ApJS..191..352K
-    xt = atpy.Table().read('NearbyGalaxies_Jan2021_PUBLIC.fits')
+    xt = atpy.Table().read('mcconnachie_jan2021.fits')
     C = acoo.SkyCoord(ra=xt['RA'], dec=xt['Dec'], unit=['hour', 'deg'])
     xt['ra'] = C.ra.deg
     xt['dec'] = C.dec.deg
 
+    # name correspondence
     maps = [('CanesVenatici(1)', 'CVnI'), ('Draco', 'Dra'), ('Fornax', 'For'),
             ('Leo1', 'LeoI'), ('Leo2', 'LeoII'), ('Sculptor', 'Scl'),
             ('Sextans(1)', 'Sex'), ('UrsaMinor', 'UMi')]
