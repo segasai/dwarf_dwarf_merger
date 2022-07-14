@@ -11,14 +11,8 @@ def mccon_finder(tab, name):
 
 mv_sun = 4.2
 
-# mass met rela  from simon 2019
-# feh = -1.68 + .28 * (log10(L/Lsun)-6)
 
-
-# mdf width  from https://iopscience.iop.org/article/10.1088/0004-637X/727/2/78
-# sigma = 0.45 -0.06 * log10(l)
 def matched_filter_range(xs, cen, sig, minv, maxv, ntarg):
-    bin = 0.1
     hh, loc = np.histogram(xs,
                            range=[minv, maxv],
                            bins=int((maxv - minv) / .1))
@@ -27,7 +21,7 @@ def matched_filter_range(xs, cen, sig, minv, maxv, ntarg):
     hh1 = N.pdf(xloc)
     rat = hh1 / np.maximum(hh, 1)
     ratmax = rat.max()
-    thresholds = np.linspace(0, ratmax, 10)
+    thresholds = np.linspace(0, ratmax, 20)
     logps = np.zeros(len(thresholds))
     edges1 = logps * 0
     edges2 = logps * 0
@@ -50,36 +44,56 @@ def matched_filter_range(xs, cen, sig, minv, maxv, ntarg):
     return (edges1[pos], edges2[pos])
 
 
-def trier(fehs, mv):
+def get_feh_mean_sig(log10l):
+    fehmean = -1.68 + .29 * (log10l - 6)
+    fehsig = 0.45 - 0.06 * (log10l - 5)
+    # mass met rela  from simon 2019
+    # feh = -1.68 + .29 * (log10(L/Lsun)-6)
+
+    # mdf width  from https://iopscience.iop.org/article/10.1088/0004-637X/727/2/78
+    # sigma = 0.45 -0.06 * (log10(l)-5)
+    # simon 2019
+    return fehmean, fehsig
+
+
+def trier(fehs, mv_parent):
     nstars0 = len(fehs)
-    mvs = []
-    nums = []
-    enums = []
-    log10l = (mv_sun - mv) / 2.5
-    for propmv in np.linspace(mv, 0, 10):
-        proplogl = (-(propmv - mv_sun) / 2.5)
-        rat = 10**(proplogl - log10l)
-        propfehmean = -1.68 + .28 * (proplogl - 6)
-        propfehsig = 0.45 - 0.06 * proplogl
-        propexpn0 = (rat * nstars0)
-        mvs.append(propmv)
+
+    log10l_parent = (mv_sun - mv_parent) / 2.5
+    min_mv = 0
+    nbins = 20
+    mv_sat_grid = np.linspace(mv_parent, min_mv, nbins)
+    nums1 = np.zeros_like(mv_sat_grid)
+    nums2 = np.zeros_like(mv_sat_grid)
+
+    for i, mv_sat in enumerate(mv_sat_grid):
+        log10l_sat = (-(mv_sat - mv_sun) / 2.5)
+        rat = 10**(log10l_sat - log10l_parent)
+        fehmean_sat, fehsig_sat = get_feh_mean_sig(log10l_sat)
+        expn0_sat = (rat * nstars0)
+        # expected number of stars from the satellite in our data
+
         # print('x', propfehmean)
-        left, right = matched_filter_range(fehs, propfehmean, propfehsig, -4,
-                                           1, propexpn0)
-        nobs = ((fehs < right) & (fehs > left)).sum()
-        N = scipy.stats.norm(propfehmean, propfehsig)
-        propexpn = propexpn0 * (N.cdf(right) - N.cdf(left))
-        # print(propexpn, nobs)
-        G = scipy.stats.gamma(nobs + 1, scale=1. / propexpn)
-        n1, en1 = G.ppf(.16), G.ppf(.84)
+        # figure the optimal metallicity range
+        feh_left, feh_right = matched_filter_range(fehs, fehmean_sat,
+                                                   fehsig_sat, -4, 1,
+                                                   expn0_sat)
+        nobs = ((fehs < feh_right) & (fehs > feh_left)).sum()
+        N = scipy.stats.norm(fehmean_sat, fehsig_sat)
+        # this is the number is expected in the metallicity range
+        expn_sat = expn0_sat * (N.cdf(feh_right) - N.cdf(feh_left))
+        print(mv_sat, feh_left, feh_right, expn0_sat, expn_sat, nobs)
+
+        # here we write the likelihood for a
+        # in N_obs ~ Poisson(a * expn_sat)
+        G = scipy.stats.gamma(nobs + 1, scale=1. / expn_sat)
+        n_16, n_84 = G.ppf(.16), G.ppf(.84)
         # print(propexpn, nobs, n1, en1)
         # n1 = nobs*1./(propexpn)
         # en1 = np.sqrt(nobs)/(propexpn)
-        nums.append(n1)
-        enums.append(en1)
-
-        # 1./0
-    return np.array(mvs), np.array(nums), np.array(enums)
+        nums1[i] = n_16
+        nums2[i] = n_84
+    return mv_sat_grid, nums1, nums2
 
 
 tab = atpy.Table().read('vizier_votable.vot')
@@ -95,12 +109,12 @@ maps = [('CanesVenatici(1)', 'CVnI'), ('Draco', 'Dra'), ('Fornax', 'For'),
 
 rh = xt['rh'] / 60  # in deg
 MV = xt['Vmag'] - xt['dmod']
-log10l = 10**(-1. / 2.5 * (MV - 4.2))
+log10l = 10**(-1. / 2.5 * (MV - mv_sun))
 fehs = tab['__Fe_H_']
 cnt = 0
 plt.clf()
 for n_mc, n_kirb in maps:
-    #xind1 = xt['GalaxyName']==n_mc
+    # xind1 = xt['GalaxyName']==n_mc
     xind1 = mccon_finder(xt, n_mc)
     curmv = float(MV[xind1])
     curlogl = float(log10l[xind1])
@@ -109,16 +123,19 @@ for n_mc, n_kirb in maps:
     xind2 = tab['dSph'] == n_kirb
     assert (xind2.sum() > 0)
 
-    xmv, xn, xen = trier(fehs[xind2], curmv)
+    xmv, xn1, xn2 = trier(fehs[xind2], curmv)
     plt.subplot(3, 3, cnt + 1)
     plt.title(n_kirb)
-    plt.fill_between(xmv, xn, xen)
+    plt.fill_between(xmv, xn1, xn2)
+    plt.axvline(curmv, color='red')
+    plt.axhline(1, linestyle='--', color='red')
     plt.gca().set_yscale('log')
     if cnt > 6:
         plt.xlabel('$M_V$')
     if cnt % 3 == 0:
         plt.ylabel('N(merged max)')
     cnt += 1
+    plt.ylim(0.1, 100)
 plt.gcf().set_size_inches(7, 7)
 plt.tight_layout()
 plt.savefig('dwarf_dwarf.pdf')
