@@ -17,6 +17,9 @@ def matched_filter_range(xs, cen, sig, minv, maxv, ntarg):
     Find the best range to detect the second population among the
     dataset that consists of xs and the second population can
     be represented as N(cen, sig) and will have ntarg objects
+    
+    The method returns the 'best' range 
+    
     """
     binsize = 0.1
     hh, loc = np.histogram(xs,
@@ -43,6 +46,8 @@ def matched_filter_range(xs, cen, sig, minv, maxv, ntarg):
         ncontam = ((xs > left) & (xs < right)).sum()
         nobj = ntarg * (N.cdf(right) - N.cdf(left))
         logp = scipy.stats.poisson(ncontam).logsf(nobj + ncontam)
+        # this is the logp of background + object data given
+        # background only model (i.e. significance)
         logps[i] = logp
         edges1[i] = left
         edges2[i] = right
@@ -65,6 +70,17 @@ def get_feh_mean_sig(log10l):
 
 
 def trier(fehs, mv_parent, min_mv=-14, max_mv=0, nbins=40):
+    """
+    given the array of metallicities and luminosity of the system 
+    return the possible (upper limit) on number of accreted systems
+    of different luminosities
+    
+    Returns:
+    mv_grid: array of M_Vs for accreted systems
+    n_16: 16% percentile on the number of accreted systems
+    n_84: 84%
+
+    """
     nstars0 = len(fehs)
 
     log10l_parent = (mv_sun - mv_parent) / 2.5
