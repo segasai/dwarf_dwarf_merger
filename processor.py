@@ -69,7 +69,7 @@ def get_feh_mean_sig(log10l):
     return fehmean, fehsig
 
 
-def trier(fehs, mv_parent, min_mv=-14, max_mv=0, nbins=40):
+def trier(fehs, mv_parent, min_mv=-14, max_mv=0, nbins=40, rstate=None):
     """
     given the array of metallicities and luminosity of the system 
     return the possible (upper limit) on number of accreted systems
@@ -81,12 +81,19 @@ def trier(fehs, mv_parent, min_mv=-14, max_mv=0, nbins=40):
     n_84: 84%
 
     """
-    nstars0 = len(fehs)
+    if rstate is None:
+        rstate = np.random.default_rng()
 
+    feh_spread_massmet = 0.15  # spread in mass metallicity relation
+
+    nstars0 = len(fehs)
     log10l_parent = (mv_sun - mv_parent) / 2.5
     mv_sat_grid = np.linspace(min_mv, max_mv, nbins)
     nums1 = np.zeros_like(mv_sat_grid)
     nums2 = np.zeros_like(mv_sat_grid)
+
+    nspread = 100
+    nsim = 1000
 
     for i, mv_sat in enumerate(mv_sat_grid):
         log10l_sat = (-(mv_sat - mv_sun) / 2.5)
@@ -101,15 +108,22 @@ def trier(fehs, mv_parent, min_mv=-14, max_mv=0, nbins=40):
                                                    fehsig_sat, -4, 1,
                                                    expn0_sat)
         nobs = ((fehs < feh_right) & (fehs > feh_left)).sum()
-        N = scipy.stats.norm(fehmean_sat, fehsig_sat)
-        # this is the number is expected in the metallicity range
-        expn_sat = expn0_sat * (N.cdf(feh_right) - N.cdf(feh_left))
-        # print(mv_sat, feh_left, feh_right, expn0_sat, expn_sat, nobs)
+        sims = []
+        for j in range(nspread):
+            curfeh = fehmean_sat + feh_spread_massmet * rstate.normal()
+            N = scipy.stats.norm(curfeh, fehsig_sat)
+            # this is the number is expected in the metallicity range
+            expn_sat = expn0_sat * (N.cdf(feh_right) - N.cdf(feh_left))
+            # print(mv_sat, feh_left, feh_right, expn0_sat, expn_sat, nobs)
 
-        # here we write the likelihood for a
-        # in N_obs ~ Poisson(a * expn_sat)
-        G = scipy.stats.gamma(nobs + 1, scale=1. / expn_sat)
-        n_16, n_84 = G.ppf(.16), G.ppf(.84)
+            # here we write the likelihood for a
+            # in N_obs ~ Poisson(a * expn_sat)
+            G = scipy.stats.gamma(nobs + 1, scale=1. / expn_sat)
+            G.rstate = rstate
+            sims.append(G.rvs(nsim))
+        sims = np.concatenate(sims)
+        n_16, n_84 = [scipy.stats.scoreatpercentile(sims, _) for _ in [16, 84]]
+        # n_16, n_84 = G.ppf(.16), G.ppf(.84)
         # print(propexpn, nobs, n1, en1)
         nums1[i] = n_16
         nums2[i] = n_84
