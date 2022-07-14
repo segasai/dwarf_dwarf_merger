@@ -56,13 +56,11 @@ def get_feh_mean_sig(log10l):
     return fehmean, fehsig
 
 
-def trier(fehs, mv_parent):
+def trier(fehs, mv_parent, min_mv=-14, max_mv=0, nbins=40):
     nstars0 = len(fehs)
 
     log10l_parent = (mv_sun - mv_parent) / 2.5
-    min_mv = 0
-    nbins = 20
-    mv_sat_grid = np.linspace(mv_parent, min_mv, nbins)
+    mv_sat_grid = np.linspace(min_mv, max_mv, nbins)
     nums1 = np.zeros_like(mv_sat_grid)
     nums2 = np.zeros_like(mv_sat_grid)
 
@@ -82,7 +80,7 @@ def trier(fehs, mv_parent):
         N = scipy.stats.norm(fehmean_sat, fehsig_sat)
         # this is the number is expected in the metallicity range
         expn_sat = expn0_sat * (N.cdf(feh_right) - N.cdf(feh_left))
-        print(mv_sat, feh_left, feh_right, expn0_sat, expn_sat, nobs)
+        # print(mv_sat, feh_left, feh_right, expn0_sat, expn_sat, nobs)
 
         # here we write the likelihood for a
         # in N_obs ~ Poisson(a * expn_sat)
