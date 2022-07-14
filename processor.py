@@ -84,7 +84,8 @@ def trier(fehs, mv_parent, min_mv=-14, max_mv=0, nbins=40, rstate=None):
     if rstate is None:
         rstate = np.random.default_rng()
 
-    feh_spread_massmet = 0.15  # spread in mass metallicity relation
+    feh_mean_spread_massmet = 0.15  # spread in mass metallicity relation
+    lfeh_sig_spread_massmet = 0.1  # spread in ln(sigma) # correspond to spread of 0.05 at sig=0.5
 
     nstars0 = len(fehs)
     log10l_parent = (mv_sun - mv_parent) / 2.5
@@ -110,8 +111,11 @@ def trier(fehs, mv_parent, min_mv=-14, max_mv=0, nbins=40, rstate=None):
         nobs = ((fehs < feh_right) & (fehs > feh_left)).sum()
         sims = []
         for j in range(nspread):
-            curfeh = fehmean_sat + feh_spread_massmet * rstate.normal()
-            N = scipy.stats.norm(curfeh, fehsig_sat)
+            curfehmean = fehmean_sat + feh_mean_spread_massmet * rstate.normal(
+            )
+            curfehsig = fehsig_sat * np.exp(
+                lfeh_sig_spread_massmet * rstate.normal())
+            N = scipy.stats.norm(curfehmean, curfehsig)
             # this is the number is expected in the metallicity range
             expn_sat = expn0_sat * (N.cdf(feh_right) - N.cdf(feh_left))
             # print(mv_sat, feh_left, feh_right, expn0_sat, expn_sat, nobs)
@@ -170,7 +174,7 @@ if __name__ == '__main__':
         if cnt > 6:
             plt.xlabel('$M_V$')
         if cnt % 3 == 0:
-            plt.ylabel('Max(N$_{merged}$')
+            plt.ylabel('Max(N$_{merged}$)')
         cnt += 1
         plt.ylim(0.1, 100)
     plt.gcf().set_size_inches(10, 7)
