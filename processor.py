@@ -13,9 +13,15 @@ mv_sun = 4.2
 
 
 def matched_filter_range(xs, cen, sig, minv, maxv, ntarg):
+    """
+    Find the best range to detect the second population among the
+    dataset that consists of xs and the second population can
+    be represented as N(cen, sig) and will have ntarg objects
+    """
+    binsize = 0.1
     hh, loc = np.histogram(xs,
                            range=[minv, maxv],
-                           bins=int((maxv - minv) / .1))
+                           bins=int((maxv - minv) / binsize))
     xloc = loc[:-1] + .5 * np.diff(loc)
     N = scipy.stats.norm(cen, sig)
     hh1 = N.pdf(xloc)
@@ -45,6 +51,10 @@ def matched_filter_range(xs, cen, sig, minv, maxv, ntarg):
 
 
 def get_feh_mean_sig(log10l):
+    """ 
+    Return the expected mean metallicity and spread at a given 
+    log10(L)
+    """
     fehmean = -1.68 + .29 * (log10l - 6)
     fehsig = 0.45 - 0.06 * (log10l - 5)
     # mass met rela  from simon 2019
