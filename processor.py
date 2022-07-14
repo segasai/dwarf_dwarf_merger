@@ -49,10 +49,8 @@ def get_feh_mean_sig(log10l):
     fehsig = 0.45 - 0.06 * (log10l - 5)
     # mass met rela  from simon 2019
     # feh = -1.68 + .29 * (log10(L/Lsun)-6)
-
-    # mdf width  from https://iopscience.iop.org/article/10.1088/0004-637X/727/2/78
-    # sigma = 0.45 -0.06 * (log10(l)-5)
-    # simon 2019
+    # mdf width from
+    # https://iopscience.iop.org/article/10.1088/0004-637X/727/2/78
     return fehmean, fehsig
 
 
@@ -94,46 +92,47 @@ def trier(fehs, mv_parent, min_mv=-14, max_mv=0, nbins=40):
     return mv_sat_grid, nums1, nums2
 
 
-tab = atpy.Table().read('vizier_votable.vot')
-# https://ui.adsabs.harvard.edu/?#abs/2010ApJS..191..352K
-xt = atpy.Table().read('NearbyGalaxies_Jan2021_PUBLIC.fits')
-C = acoo.SkyCoord(ra=xt['RA'], dec=xt['Dec'], unit=['hour', 'deg'])
-xt['ra'] = C.ra.deg
-xt['dec'] = C.dec.deg
+if __name__ == '__main__':
+    tab = atpy.Table().read('vizier_votable.vot')
+    # https://ui.adsabs.harvard.edu/?#abs/2010ApJS..191..352K
+    xt = atpy.Table().read('NearbyGalaxies_Jan2021_PUBLIC.fits')
+    C = acoo.SkyCoord(ra=xt['RA'], dec=xt['Dec'], unit=['hour', 'deg'])
+    xt['ra'] = C.ra.deg
+    xt['dec'] = C.dec.deg
 
-maps = [('CanesVenatici(1)', 'CVnI'), ('Draco', 'Dra'), ('Fornax', 'For'),
-        ('Leo1', 'LeoI'), ('Leo2', 'LeoII'), ('Sculptor', 'Scl'),
-        ('Sextans(1)', 'Sex'), ('UrsaMinor', 'UMi')]
+    maps = [('CanesVenatici(1)', 'CVnI'), ('Draco', 'Dra'), ('Fornax', 'For'),
+            ('Leo1', 'LeoI'), ('Leo2', 'LeoII'), ('Sculptor', 'Scl'),
+            ('Sextans(1)', 'Sex'), ('UrsaMinor', 'UMi')]
 
-rh = xt['rh'] / 60  # in deg
-MV = xt['Vmag'] - xt['dmod']
-log10l = 10**(-1. / 2.5 * (MV - mv_sun))
-fehs = tab['__Fe_H_']
-cnt = 0
-plt.clf()
-for n_mc, n_kirb in maps:
-    # xind1 = xt['GalaxyName']==n_mc
-    xind1 = mccon_finder(xt, n_mc)
-    curmv = float(MV[xind1])
-    curlogl = float(log10l[xind1])
+    rh = xt['rh'] / 60  # in deg
+    MV = xt['Vmag'] - xt['dmod']
+    log10l = 10**(-1. / 2.5 * (MV - mv_sun))
+    fehs = tab['__Fe_H_']
+    cnt = 0
+    plt.clf()
+    for n_mc, n_kirb in maps:
+        # xind1 = xt['GalaxyName']==n_mc
+        xind1 = mccon_finder(xt, n_mc)
+        curmv = float(MV[xind1])
+        curlogl = float(log10l[xind1])
 
-    print(curmv)
-    xind2 = tab['dSph'] == n_kirb
-    assert (xind2.sum() > 0)
+        print(curmv)
+        xind2 = tab['dSph'] == n_kirb
+        assert (xind2.sum() > 0)
 
-    xmv, xn1, xn2 = trier(fehs[xind2], curmv)
-    plt.subplot(3, 3, cnt + 1)
-    plt.title(n_kirb)
-    plt.fill_between(xmv, xn1, xn2)
-    plt.axvline(curmv, color='red')
-    plt.axhline(1, linestyle='--', color='red')
-    plt.gca().set_yscale('log')
-    if cnt > 6:
-        plt.xlabel('$M_V$')
-    if cnt % 3 == 0:
-        plt.ylabel('N(merged max)')
-    cnt += 1
-    plt.ylim(0.1, 100)
-plt.gcf().set_size_inches(10, 7)
-plt.tight_layout()
-plt.savefig('dwarf_dwarf.pdf')
+        xmv, xn1, xn2 = trier(fehs[xind2], curmv)
+        plt.subplot(3, 3, cnt + 1)
+        plt.title(n_kirb)
+        plt.fill_between(xmv, xn1, xn2)
+        plt.axvline(curmv, color='red')
+        plt.axhline(1, linestyle='--', color='red')
+        plt.gca().set_yscale('log')
+        if cnt > 6:
+            plt.xlabel('$M_V$')
+        if cnt % 3 == 0:
+            plt.ylabel('N(merged max)')
+        cnt += 1
+        plt.ylim(0.1, 100)
+    plt.gcf().set_size_inches(10, 7)
+    plt.tight_layout()
+    plt.savefig('dwarf_dwarf.pdf')
