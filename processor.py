@@ -148,6 +148,7 @@ if __name__ == '__main__':
     log10l = 10**(-1. / 2.5 * (MV - mv_sun))
     fehs = tab['__Fe_H_']
     cnt = 0
+    rstate = np.random.default_rng(43435226)
     plt.clf()
     for n_mc, n_kirb in maps:
         # xind1 = xt['GalaxyName']==n_mc
@@ -159,7 +160,7 @@ if __name__ == '__main__':
         xind2 = tab['dSph'] == n_kirb
         assert (xind2.sum() > 0)
 
-        xmv, xn1, xn2 = trier(fehs[xind2], curmv)
+        xmv, xn1, xn2 = trier(fehs[xind2], curmv, rstate=rstate)
         plt.subplot(3, 3, cnt + 1)
         plt.title(n_kirb)
         plt.fill_between(xmv, xn1, xn2)
@@ -169,7 +170,7 @@ if __name__ == '__main__':
         if cnt > 6:
             plt.xlabel('$M_V$')
         if cnt % 3 == 0:
-            plt.ylabel('N(merged max)')
+            plt.ylabel('Max(N$_{merged}$')
         cnt += 1
         plt.ylim(0.1, 100)
     plt.gcf().set_size_inches(10, 7)
